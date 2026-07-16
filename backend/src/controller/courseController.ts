@@ -15,12 +15,6 @@ export const createCourse = async (req: Request, res: Response) => {
       return res.status(400).json({ message: "Title is required." });
     }
 
-    const existingCourse = await prisma.course.findUnique({ where: { userId } });
-
-    if (existingCourse) {
-      return res.status(409).json({ message: "You already have a course." });
-    }
-
     const course = await prisma.course.create({
       data: {
         title,

@@ -7,8 +7,8 @@ const Header = () => {
       <Link to='/' >Register</Link>
       <Link to='/Login' >Login</Link>
       <Link to='/UppyDashboard' >UppyDashboard</Link>
-
-
+      <Link to='/AddCourse' >AddCourse</Link>
+      <Link to='/GetAllCourses' >GetAllCourses</Link>
       
     </div>
   )
