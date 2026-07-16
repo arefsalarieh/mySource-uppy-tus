@@ -1,13 +1,13 @@
 import express from "express";
 import { checkAuthentication } from "../middleware/checkAuthentication";
-import { addFileToDb } from "../controller/fileController";
+import { uploadCourseFile } from "../controller/fileController";
 
 const fileRoutes = express.Router();
 
 fileRoutes.use(
   "/upload",
   checkAuthentication,
-  addFileToDb,
+  uploadCourseFile,
 );
 
 export { fileRoutes };

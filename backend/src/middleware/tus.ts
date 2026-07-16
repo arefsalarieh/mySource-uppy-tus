@@ -7,44 +7,73 @@ import { FileStore } from "@tus/file-store";
 import {
   getExtension,
   generateFilename,
-  getVideoDestination,
+  getFileDestination,
 } from "../utils/CorrectName";
 
-export const tusServer = new Server({
-  path: "/api/file/upload",
+type SavedFileInfo = {
+  filename: string;
+  originalName: string;
+  extension: string;
+  mimeType: string;
+  size: number;
+  path: string;
+  url: string;
+};
 
-  datastore: new FileStore({
-    directory: path.join(process.cwd(), "uploads"),
-  }),
+interface CreateTusServerOptions {
+  routePath: string;        
+  subfolder: string;       
+  onSaved?: (info: SavedFileInfo) => Promise<void>; 
+}
 
-  async onUploadFinish(req, upload) {
-    if (!upload.metadata?.filename) {
-      throw new Error("Filename is missing.");
-    }
+export function createTusServer({
+  routePath,
+  subfolder,
+  onSaved,
+}: CreateTusServerOptions) {
+  return new Server({
+    path: routePath,
 
-    const filename = upload.metadata.filename;
-    const extension = getExtension(filename);
-    const newFilename = generateFilename(filename);
+    datastore: new FileStore({
+      directory: path.join(process.cwd(), "uploads"),
+    }),
 
-    const oldPath = path.join(process.cwd(), "uploads", upload.id);
-    const newPath = getVideoDestination(newFilename);
+    async onUploadFinish(req, upload) {
+      if (!upload.metadata?.filename) {
+        throw new Error("Filename is missing.");
+      }
 
-    try {
-      await fs.mkdir(path.dirname(newPath), { recursive: true });
-      await fs.rename(oldPath, newPath);
-      await fs.unlink(oldPath + ".json").catch(() => {});
+      const filename = upload.metadata.filename;
+      const extension = getExtension(filename);
+      const newFilename = generateFilename(filename);
 
-      console.log({
-        filename: newFilename,
-        extension,
-        path: newPath,
-        size: upload.size,
-      });
-    } catch (err) {
-      console.error("Rename failed:", err);
-      throw err;
-    }
+      const oldPath = path.join(process.cwd(), "uploads", upload.id);
+      const newPath = getFileDestination(subfolder, newFilename);
 
-    return {};
-  },
-});
+      try {
+        await fs.mkdir(path.dirname(newPath), { recursive: true });
+        await fs.rename(oldPath, newPath);
+        await fs.unlink(oldPath + ".json").catch(() => {});
+
+        if (onSaved) {
+          await onSaved({
+            filename: newFilename,
+            originalName: filename,
+            extension,
+            mimeType: upload.metadata?.filetype || "",
+            size: upload.size ?? 0,
+            path: newPath,
+            url: `/${subfolder}/${newFilename}`,
+          });
+        }
+
+        console.log({ filename: newFilename, extension, path: newPath });
+      } catch (err) {
+        console.error("Upload finish failed:", err);
+        throw err;
+      }
+
+      return {};
+    },
+  });
+}
