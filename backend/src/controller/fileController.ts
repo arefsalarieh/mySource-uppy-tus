@@ -1,13 +1,13 @@
 import type { Request, Response } from "express";
 import { createTusServer } from "../middleware/tus";
-// import { prisma } from "../config/prisma";
+import { prisma } from "../utils/prisma";
 
 const tusServer = createTusServer({
-  routePath: "/api/file/courses/upload",
+  routePath: "/api/file/upload",
   subfolder: "courses",
-  // onSaved: async (info) => {
-  //   await prisma.file.create({ data: info });
-  // },
+  onSaved: async (info) => {
+    await prisma.file.create({ data: info });
+  },
 });
 
 export const uploadCourseFile = async (req: Request, res: Response) => {

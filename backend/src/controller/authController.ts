@@ -2,8 +2,8 @@ import type { Request, Response } from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { prisma } from "../utils/prisma";
+import { JWT_SECRET } from "../utils/jwt";
 
-const JWT_SECRET = process.env.JWT_SECRET ?? "dev-secret-change-me";
 const JWT_EXPIRES_IN = "7d";
 
 export const handleRegister = async (req: Request, res: Response) => {
@@ -12,6 +12,10 @@ export const handleRegister = async (req: Request, res: Response) => {
 
     if (!email || !password) {
       return res.status(400).json({ message: "Email and password are required." });
+    }
+
+    if (typeof password !== "string" || password.length < 6) {
+      return res.status(400).json({ message: "Password must be at least 6 characters." });
     }
 
     const existingUser = await prisma.user.findUnique({ where: { email } });
@@ -23,10 +27,7 @@ export const handleRegister = async (req: Request, res: Response) => {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const user = await prisma.user.create({
-      data: {
-        email,
-        password: hashedPassword,
-      },
+      data: { email, password: hashedPassword },
     });
 
     const token = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET, {
@@ -36,10 +37,7 @@ export const handleRegister = async (req: Request, res: Response) => {
     return res.status(201).json({
       message: "Registration successful.",
       token,
-      user: {
-        id: user.id,
-        email: user.email,
-      },
+      user: { id: user.id, email: user.email },
     });
   } catch (error) {
     console.error("Register error:", error);
@@ -58,13 +56,13 @@ export const handleLogin = async (req: Request, res: Response) => {
     const user = await prisma.user.findUnique({ where: { email } });
 
     if (!user) {
-      return res.status(401).json({ message: "Incorrect email or password." });
+      return res.status(401).json({ message: "Invalid email or password." });
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
 
     if (!isPasswordValid) {
-      return res.status(401).json({ message: "Incorrect email or password." });
+      return res.status(401).json({ message: "Invalid email or password." });
     }
 
     const token = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET, {
@@ -74,10 +72,7 @@ export const handleLogin = async (req: Request, res: Response) => {
     return res.status(200).json({
       message: "Login successful.",
       token,
-      user: {
-        id: user.id,
-        email: user.email,
-      },
+      user: { id: user.id, email: user.email },
     });
   } catch (error) {
     console.error("Login error:", error);

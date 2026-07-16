@@ -3,12 +3,14 @@ import fs from "node:fs/promises";
 
 import { Server } from "@tus/server";
 import { FileStore } from "@tus/file-store";
+import jwt from "jsonwebtoken";
 
 import {
   getExtension,
   generateFilename,
   getFileDestination,
 } from "../utils/CorrectName";
+import { JWT_SECRET, type JwtPayload } from "../utils/jwt";
 
 type SavedFileInfo = {
   filename: string;
@@ -18,12 +20,33 @@ type SavedFileInfo = {
   size: number;
   path: string;
   url: string;
+  userId: string;
 };
 
 interface CreateTusServerOptions {
-  routePath: string;        
-  subfolder: string;       
-  onSaved?: (info: SavedFileInfo) => Promise<void>; 
+  routePath: string;
+  subfolder: string;
+  onSaved?: (info: SavedFileInfo) => Promise<void>;
+}
+
+
+function getUserIdFromRequest(req: any): string | null {
+  try {
+    const authHeader =
+      typeof req.headers?.get === "function"
+        ? req.headers.get("authorization")
+        : req.headers?.authorization;
+
+    if (!authHeader) return null;
+
+    const token = authHeader.split(" ")[1];
+    if (!token) return null;
+
+    const decoded = jwt.verify(token, JWT_SECRET) as JwtPayload;
+    return decoded.userId;
+  } catch {
+    return null;
+  }
 }
 
 export function createTusServer({
@@ -41,6 +64,12 @@ export function createTusServer({
     async onUploadFinish(req, upload) {
       if (!upload.metadata?.filename) {
         throw new Error("Filename is missing.");
+      }
+
+      const userId = getUserIdFromRequest(req);
+
+      if (!userId) {
+        throw new Error("Unauthorized: invalid or missing token.");
       }
 
       const filename = upload.metadata.filename;
@@ -64,10 +93,11 @@ export function createTusServer({
             size: upload.size ?? 0,
             path: newPath,
             url: `/${subfolder}/${newFilename}`,
+            userId,
           });
         }
 
-        console.log({ filename: newFilename, extension, path: newPath });
+        console.log({ filename: newFilename, extension, path: newPath, userId });
       } catch (err) {
         console.error("Upload finish failed:", err);
         throw err;
