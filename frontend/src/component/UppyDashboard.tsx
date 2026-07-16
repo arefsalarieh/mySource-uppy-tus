@@ -8,7 +8,11 @@ import { useState } from "react";
 export default function UppyDashboard() {
   const [uppy] = useState(() =>
     new Uppy().use(Tus, {
-      endpoint: "http://localhost:5000/files",
+      endpoint: "http://localhost:5000/api/file/upload",
+
+      headers: {
+        Authorization: `Bearer aaaaaa`,
+      },
     }),
   );
 

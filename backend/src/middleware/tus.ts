@@ -8,11 +8,10 @@ import {
   getExtension,
   generateFilename,
   getVideoDestination,
-} from "../utils/3-CorrectName";
-import { prisma } from "../config/prisma";
+} from "../utils/CorrectName";
 
 export const tusServer = new Server({
-  path: "/files",
+  path: "/api/file/upload",
 
   datastore: new FileStore({
     directory: path.join(process.cwd(), "uploads"),
@@ -35,20 +34,12 @@ export const tusServer = new Server({
       await fs.rename(oldPath, newPath);
       await fs.unlink(oldPath + ".json").catch(() => {});
 
-      const record = await prisma.file.create({
-        data: {
-          filename: newFilename,
-          originalName: filename,
-          mimeType: upload.metadata.filetype || "",
-          extension,
-          size: upload.size ?? 0,
-          path: newPath,
-          url: `/videos/${newFilename}`,
-        },
+      console.log({
+        filename: newFilename,
+        extension,
+        path: newPath,
+        size: upload.size,
       });
-
-      console.log("Saved to DB:", record);
-
     } catch (err) {
       console.error("Rename failed:", err);
       throw err;
