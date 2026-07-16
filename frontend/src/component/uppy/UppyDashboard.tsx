@@ -6,12 +6,15 @@ import "@uppy/dashboard/css/style.min.css";
 import { useState } from "react";
 
 export default function UppyDashboard() {
+  const token = localStorage.getItem('token') || '';
+  console.log(token)
+
   const [uppy] = useState(() =>
     new Uppy().use(Tus, {
       endpoint: "http://localhost:5000/api/file/upload",
 
       headers: {
-        Authorization: `Bearer aaaaaa`,
+        Authorization: `Bearer ${token}`,
       },
     }),
   );

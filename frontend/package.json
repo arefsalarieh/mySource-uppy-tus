@@ -15,9 +15,11 @@
     "@uppy/react": "^5.2.0",
     "@uppy/tus": "^5.1.1",
     "@uppy/xhr-upload": "^5.2.0",
+    "axios": "^1.18.1",
     "multer": "^2.2.0",
     "react": "^19.2.7",
-    "react-dom": "^19.2.7"
+    "react-dom": "^19.2.7",
+    "react-router-dom": "^7.18.1"
   },
   "devDependencies": {
     "@types/multer": "^2.2.0",
