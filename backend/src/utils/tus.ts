@@ -9,10 +9,10 @@ import {
   getExtension,
   generateFilename,
   getFileDestination,
-} from "../utils/CorrectName";
-import { JWT_SECRET, type JwtPayload } from "../utils/jwt";
+} from "./CorrectName";
+import { JWT_SECRET, type JwtPayload } from "./jwt";
 
-type SavedFileInfo = {
+type BaseFileInfo = {
   filename: string;
   originalName: string;
   extension: string;
@@ -23,12 +23,18 @@ type SavedFileInfo = {
   userId: string;
 };
 
-interface CreateTusServerOptions {
+type BuildDataContext = {
+  req: any;
+  upload: any;
+  base: BaseFileInfo;
+};
+
+interface CreateTusServerOptions<T extends Record<string, unknown> = {}> {
   routePath: string;
   subfolder: string;
-  onSaved?: (info: SavedFileInfo) => Promise<void>;
+  buildData?: (ctx: BuildDataContext) => T | Promise<T>;
+  onSaved?: (info: BaseFileInfo & T) => Promise<void>;
 }
-
 
 function getUserIdFromRequest(req: any): string | null {
   try {
@@ -49,11 +55,12 @@ function getUserIdFromRequest(req: any): string | null {
   }
 }
 
-export function createTusServer({
+export function createTusServer<T extends Record<string, unknown> = {}>({
   routePath,
   subfolder,
+  buildData,
   onSaved,
-}: CreateTusServerOptions) {
+}: CreateTusServerOptions<T>) {
   return new Server({
     path: routePath,
 
@@ -84,20 +91,25 @@ export function createTusServer({
         await fs.rename(oldPath, newPath);
         await fs.unlink(oldPath + ".json").catch(() => {});
 
+        const base: BaseFileInfo = {
+          filename: newFilename,
+          originalName: filename,
+          extension,
+          mimeType: upload.metadata?.filetype || "",
+          size: upload.size ?? 0,
+          path: newPath,
+          url: `/${subfolder}/${newFilename}`,
+          userId,
+        };
+
+        const extra = buildData ? await buildData({ req, upload, base }) : ({} as T);
+        const finalData = { ...base, ...extra };
+
         if (onSaved) {
-          await onSaved({
-            filename: newFilename,
-            originalName: filename,
-            extension,
-            mimeType: upload.metadata?.filetype || "",
-            size: upload.size ?? 0,
-            path: newPath,
-            url: `/${subfolder}/${newFilename}`,
-            userId,
-          });
+          await onSaved(finalData);
         }
 
-        console.log({ filename: newFilename, extension, path: newPath, userId });
+        console.log(finalData);
       } catch (err) {
         console.error("Upload finish failed:", err);
         throw err;
