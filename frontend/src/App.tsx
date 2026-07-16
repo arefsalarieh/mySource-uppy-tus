@@ -1,4 +1,4 @@
-
+import UppyDashboard from "./component/UppyDashboard"
 
 
 
@@ -6,7 +6,7 @@ function App() {
 
   return (
     <>
-      app
+      <UppyDashboard/>
 
 
 
