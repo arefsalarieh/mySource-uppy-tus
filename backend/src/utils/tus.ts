@@ -1,5 +1,6 @@
 import path from "node:path";
 import fs from "node:fs/promises";
+import { AsyncLocalStorage } from "node:async_hooks";
 
 import { Server } from "@tus/server";
 import { FileStore } from "@tus/file-store";
@@ -33,8 +34,13 @@ interface CreateTusServerOptions<T extends Record<string, unknown> = {}> {
   routePath: string;
   subfolder: string;
   buildData?: (ctx: BuildDataContext) => T | Promise<T>;
-  onSaved?: (info: BaseFileInfo & T) => Promise<void>;
 }
+
+type UploadResultStore<T extends Record<string, unknown> = {}> = {
+  result?: BaseFileInfo & T;
+};
+
+export const uploadContext = new AsyncLocalStorage<UploadResultStore<any>>();
 
 function getUserIdFromRequest(req: any): string | null {
   try {
@@ -59,7 +65,6 @@ export function createTusServer<T extends Record<string, unknown> = {}>({
   routePath,
   subfolder,
   buildData,
-  onSaved,
 }: CreateTusServerOptions<T>) {
   return new Server({
     path: routePath,
@@ -105,11 +110,11 @@ export function createTusServer<T extends Record<string, unknown> = {}>({
         const extra = buildData ? await buildData({ req, upload, base }) : ({} as T);
         const finalData = { ...base, ...extra };
 
-        if (onSaved) {
-          await onSaved(finalData);
+        const store = uploadContext.getStore();
+        if (store) {
+          store.result = finalData;
         }
 
-        console.log(finalData);
       } catch (err) {
         console.error("Upload finish failed:", err);
         throw err;
@@ -119,3 +124,5 @@ export function createTusServer<T extends Record<string, unknown> = {}>({
     },
   });
 }
+
+export type UploadFinalData<T extends Record<string, unknown> = {}> = BaseFileInfo & T;

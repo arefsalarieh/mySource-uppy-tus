@@ -1,8 +1,10 @@
 import type { Request, Response } from "express";
-import { createTusServer } from "../utils/tus";
+import { createTusServer, uploadContext, type UploadFinalData } from "../utils/tus";
 import { prisma } from "../utils/prisma";
 
-const tusServer = createTusServer<{ courseId: string; sessionNumber: number }>({
+type CourseUploadExtra = { courseId: string; sessionNumber: number };
+
+const tusServer = createTusServer<CourseUploadExtra>({
   routePath: "/api/file/upload",
   subfolder: "courses",
 
@@ -36,15 +38,17 @@ const tusServer = createTusServer<{ courseId: string; sessionNumber: number }>({
 
     return { courseId, sessionNumber };
   },
-
-  onSaved: async (info) => {
-    await prisma.file.create({ data: info });
-  },
 });
 
 export const uploadCourseFile = async (req: Request, res: Response) => {
+  const store: { result?: UploadFinalData<CourseUploadExtra> } = {};
+
   try {
-    await tusServer.handle(req, res);
+    await uploadContext.run(store, () => tusServer.handle(req, res));
+
+    if (store.result) {
+      await prisma.file.create({ data: store.result });
+    }
   } catch (error) {
     console.error("tus handle error:", error);
     if (!res.headersSent) {
