@@ -20,7 +20,7 @@ type BaseFileInfo = {
   extension: string;
   mimeType: string;
   size: number;
-  path: string; 
+  path: string;
   url: string;
   userId: string;
 };
@@ -62,6 +62,8 @@ function getUserIdFromRequest(req: any): string | null {
   }
 }
 
+const ALLOWED_EXTENSIONS = new Set([".mp4", ".webm"]);
+
 export function createTusServer<T extends Record<string, unknown> = {}>({
   routePath,
   subfolder,
@@ -73,6 +75,24 @@ export function createTusServer<T extends Record<string, unknown> = {}>({
     datastore: new FileStore({
       directory: path.join(process.cwd(), "uploads"),
     }),
+
+    async onUploadCreate(req, upload) {
+      const filename = upload.metadata?.filename;
+
+      if (!filename) {
+        throw new Error("Filename is missing.");
+      }
+
+      const extension = getExtension(filename).toLowerCase();
+
+      if (!ALLOWED_EXTENSIONS.has(extension)) {
+        throw new Error(
+          `File format "${extension}" is not supported. Allowed formats: ${[...ALLOWED_EXTENSIONS].join(", ")}`,
+        );
+      }
+
+      return {};
+    },
 
     async onUploadFinish(req, upload) {
       if (!upload.metadata?.filename) {
@@ -90,8 +110,14 @@ export function createTusServer<T extends Record<string, unknown> = {}>({
       const newFilename = generateFilename(filename);
 
       const oldPath = path.join(process.cwd(), "uploads", upload.id);
-      const absoluteNewPath = getAbsoluteFileDestination(subfolder, newFilename);
-      const relativeNewPath = getRelativeFileDestination(subfolder, newFilename);
+      const absoluteNewPath = getAbsoluteFileDestination(
+        subfolder,
+        newFilename,
+      );
+      const relativeNewPath = getRelativeFileDestination(
+        subfolder,
+        newFilename,
+      );
 
       try {
         await fs.mkdir(path.dirname(absoluteNewPath), { recursive: true });
@@ -109,7 +135,9 @@ export function createTusServer<T extends Record<string, unknown> = {}>({
           userId,
         };
 
-        const extra = buildData ? await buildData({ req, upload, base }) : ({} as T);
+        const extra = buildData
+          ? await buildData({ req, upload, base })
+          : ({} as T);
         const finalData = { ...base, ...extra };
 
         const store = uploadContext.getStore();
@@ -126,4 +154,5 @@ export function createTusServer<T extends Record<string, unknown> = {}>({
   });
 }
 
-export type UploadFinalData<T extends Record<string, unknown> = {}> = BaseFileInfo & T;
+export type UploadFinalData<T extends Record<string, unknown> = {}> =
+  BaseFileInfo & T;

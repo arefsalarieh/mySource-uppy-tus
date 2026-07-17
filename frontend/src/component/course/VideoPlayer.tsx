@@ -15,7 +15,7 @@ const VideoPlayer = () => {
       return;
     }
 
-    const streamUrl = `http://localhost:5000/api/file/stream/${fileId}`;
+    const streamUrl = `http://localhost:5000/api/file/stream/${fileId}?token=${encodeURIComponent(token)}`;
     setUrl(streamUrl);
   }, [fileId]);
 
@@ -25,13 +25,9 @@ const VideoPlayer = () => {
   return (
     <div style={{ maxWidth: "800px", margin: "0 auto" }}>
       <h3>Video Player</h3>
-      <ReactPlayer
-        src={url} 
-        controls
-        width="100%"
-        height="auto"
-        onError={(e) => console.error("Playback error:", e)}
-      />
+      <ReactPlayer controls width="100%" height="auto" onError={(e) => console.error("Playback error:", e)}>
+        <source src={url} type="video/mp4" />
+      </ReactPlayer>
     </div>
   );
 };
