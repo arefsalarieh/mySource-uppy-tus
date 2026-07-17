@@ -40,6 +40,8 @@ export const getCourses = async (req: Request, res: Response) => {
       orderBy: { createdAt: "desc" },
     });
 
+    console.log(courses)
+
     return res.status(200).json({ courses });
   } catch (error) {
     console.error("Get courses error:", error);

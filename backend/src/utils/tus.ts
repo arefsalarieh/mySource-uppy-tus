@@ -9,7 +9,8 @@ import jwt from "jsonwebtoken";
 import {
   getExtension,
   generateFilename,
-  getFileDestination,
+  getRelativeFileDestination,
+  getAbsoluteFileDestination,
 } from "./CorrectName";
 import { JWT_SECRET, type JwtPayload } from "./jwt";
 
@@ -19,7 +20,7 @@ type BaseFileInfo = {
   extension: string;
   mimeType: string;
   size: number;
-  path: string;
+  path: string; 
   url: string;
   userId: string;
 };
@@ -89,11 +90,12 @@ export function createTusServer<T extends Record<string, unknown> = {}>({
       const newFilename = generateFilename(filename);
 
       const oldPath = path.join(process.cwd(), "uploads", upload.id);
-      const newPath = getFileDestination(subfolder, newFilename);
+      const absoluteNewPath = getAbsoluteFileDestination(subfolder, newFilename);
+      const relativeNewPath = getRelativeFileDestination(subfolder, newFilename);
 
       try {
-        await fs.mkdir(path.dirname(newPath), { recursive: true });
-        await fs.rename(oldPath, newPath);
+        await fs.mkdir(path.dirname(absoluteNewPath), { recursive: true });
+        await fs.rename(oldPath, absoluteNewPath);
         await fs.unlink(oldPath + ".json").catch(() => {});
 
         const base: BaseFileInfo = {
@@ -102,7 +104,7 @@ export function createTusServer<T extends Record<string, unknown> = {}>({
           extension,
           mimeType: upload.metadata?.filetype || "",
           size: upload.size ?? 0,
-          path: newPath,
+          path: relativeNewPath,
           url: `/${subfolder}/${newFilename}`,
           userId,
         };
@@ -114,7 +116,6 @@ export function createTusServer<T extends Record<string, unknown> = {}>({
         if (store) {
           store.result = finalData;
         }
-
       } catch (err) {
         console.error("Upload finish failed:", err);
         throw err;

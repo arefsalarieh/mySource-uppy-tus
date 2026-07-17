@@ -1,5 +1,6 @@
 import path from "node:path";
 import crypto from "node:crypto";
+import { STORAGE_ROOT } from "./storage";
 
 export function getExtension(filename: string) {
   return path.extname(filename);
@@ -10,6 +11,10 @@ export function generateFilename(filename: string) {
   return crypto.randomUUID() + extension;
 }
 
-export function getFileDestination(subfolder: string, filename: string) {
-  return path.join(process.cwd(), "storage", subfolder, filename);
+export function getRelativeFileDestination(subfolder: string, filename: string) {
+  return path.join(subfolder, filename);
+}
+
+export function getAbsoluteFileDestination(subfolder: string, filename: string) {
+  return path.join(STORAGE_ROOT, subfolder, filename);
 }
